@@ -454,7 +454,7 @@ function App() {
       <header className="header">
         <div className="header-title">
           <div className="header-logo">S</div>
-          Storyboarder Web
+          Story Master Web
         </div>
       </header>
 
