@@ -88,7 +88,7 @@ function App() {
 
   // Numbering settings
   const [numberingStart, setNumberingStart] = useState(1);
-  const [numberingStyle, setNumberingStyle] = useState('decimal'); // decimal, roman, letter
+  const [numberingStyle, setNumberingStyle] = useState('shot'); // shot, decimal, roman, letter
 
   // PDF Settings
   const [paperSize, setPaperSize] = useState('letter'); // letter, a4
@@ -130,13 +130,18 @@ function App() {
       const duplicatedItem = {
         ...itemToDuplicate,
         id: uuidv4(),
-        notes: itemToDuplicate.notes
+        notes: itemToDuplicate.notes,
+        isNewShot: itemToDuplicate.isNewShot ?? true,
       };
       
       const newItems = [...prev];
       newItems.splice(index + 1, 0, duplicatedItem);
       return newItems;
     });
+  };
+
+  const setItemNewShot = (id, isNewShot) => {
+    setItems((prev) => prev.map(item => item.id === id ? { ...item, isNewShot } : item));
   };
 
   // Keyboard shortcuts
@@ -222,7 +227,8 @@ function App() {
       id: uuidv4(),
       url: URL.createObjectURL(file),
       file,
-      notes: ''
+      notes: '',
+      isNewShot: true,
     }));
     setItems((prev) => {
       const combined = [...prev, ...newItems];
@@ -269,9 +275,36 @@ function App() {
     return result || 'A';
   };
 
+  const getShotLabel = (index) => {
+    let shotNum = numberingStart;
+    let letterIndex = -1;
+
+    for (let i = 0; i <= index; i++) {
+      const item = items[i];
+      const isNewShot = i === 0 || (item?.isNewShot ?? true);
+
+      if (isNewShot) {
+        if (i !== 0) {
+          shotNum += 1;
+        }
+        letterIndex = 0;
+      } else {
+        letterIndex += 1;
+      }
+
+      if (i === index) {
+        return `${shotNum}${String.fromCharCode(65 + letterIndex)}`;
+      }
+    }
+
+    return `${numberingStart}A`;
+  };
+
   const formatNumber = (index) => {
     const num = index + numberingStart;
     switch (numberingStyle) {
+      case 'shot':
+        return getShotLabel(index);
       case 'roman':
         return toRoman(num);
       case 'letter':
@@ -542,6 +575,7 @@ function App() {
                 value={numberingStyle} 
                 onChange={e => setNumberingStyle(e.target.value)}
               >
+                <option value="shot">Shot + Panel (1A, 1B, 2A...)</option>
                 <option value="decimal">Decimal (1, 2, 3...)</option>
                 <option value="roman">Roman (I, II, III...)</option>
                 <option value="letter">Letter (A, B, C...)</option>
@@ -565,15 +599,31 @@ function App() {
             <div className="sidebar-section-title"><LayoutGrid size={14} /> Frame Settings</div>
             
             {activeItem ? (
-              <div className="form-group">
-                <label className="form-label">Notes for Shot {formatNumber(items.findIndex(i => i.id === activeItem.id))}</label>
-                <textarea 
-                  className="textarea-input" 
-                  value={activeItem.notes}
-                  onChange={(e) => updateItemNotes(activeItem.id, e.target.value)}
-                  placeholder="Enter dialogue, action, or camera notes here..."
-                />
-              </div>
+              <>
+                <div className="form-group">
+                  <label className="form-label">Notes for Shot {formatNumber(items.findIndex(i => i.id === activeItem.id))}</label>
+                  <textarea 
+                    className="textarea-input" 
+                    value={activeItem.notes}
+                    onChange={(e) => updateItemNotes(activeItem.id, e.target.value)}
+                    placeholder="Enter dialogue, action, or camera notes here..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={items.findIndex(i => i.id === activeItem.id) === 0 ? true : (activeItem.isNewShot ?? true)}
+                      disabled={items.findIndex(i => i.id === activeItem.id) === 0}
+                      onChange={(e) => setItemNewShot(activeItem.id, e.target.checked)}
+                    />
+                    New Shot
+                  </label>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    When unchecked, this frame continues the previous shot and is labeled with the next letter.
+                  </p>
+                </div>
+              </>
             ) : (
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Select a frame in the timeline to add notes.</p>
             )}
